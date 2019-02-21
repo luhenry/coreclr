@@ -139,6 +139,8 @@
 #define g_ThreadClassName "System.Threading.Thread"
 #define g_TypeClassName   "System.Type"
 
+#define g_Utf8StringName "Utf8String"
+
 #define g_VariantClassName "System.Variant"
 #define g_GuidClassName "System.Guid"
 
