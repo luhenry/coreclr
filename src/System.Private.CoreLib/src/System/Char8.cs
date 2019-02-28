@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-namespace System.Text
+namespace System
 {
     /// <summary>
     /// Represents a UTF-8 code unit, the elemental type of <see cref="Utf8String"/>.

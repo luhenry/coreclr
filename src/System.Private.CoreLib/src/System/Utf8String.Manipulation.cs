@@ -25,7 +25,7 @@ namespace System
             Debug.Assert(length != 0 && length != this.Length, "Caller should handle Length boundary conditions.");
 
             Utf8String newString = FastAllocate(length);
-            Buffer.Memmove(ref newString.DangerousGetMutableReference(), ref this.DangerousGetMutableReferenceToElementAtIndex(startIndex), (uint)length);
+            Buffer.Memmove(ref newString.DangerousGetMutableReference(), ref this.DangerousGetMutableReference(startIndex), (uint)length);
             return newString;
         }
 

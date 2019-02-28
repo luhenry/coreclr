@@ -43,6 +43,16 @@ namespace System
         /// </summary>
         public static bool operator !=(Utf8String a, Utf8String b) => !Equals(a, b);
 
+        /// <summary>
+        /// Projects a <see cref="Utf8String"/> instance as a <see cref="ReadOnlySpan{Byte}"/>.
+        /// </summary>
+        public static explicit operator ReadOnlySpan<byte>(Utf8String value) => value.AsBytes();
+
+        /// <summary>
+        /// Projects a <see cref="Utf8String"/> instance as a <see cref="ReadOnlySpan{Char8}"/>.
+        /// </summary>
+        public static implicit operator ReadOnlySpan<Char8>(Utf8String value) => value.AsSpan();
+
         /*
          * INSTANCE PROPERTIES
          */
@@ -108,7 +118,7 @@ namespace System
         /// Returns a <em>mutable</em> reference to the element at index <paramref name="index"/>
         /// of this <see cref="Utf8String"/> instance. The index is not bounds-checked.
         /// </summary>
-        internal ref byte DangerousGetMutableReferenceToElementAtIndex(int index)
+        internal ref byte DangerousGetMutableReference(int index)
         {
             // Allow retrieving references to the null terminator.
             Debug.Assert((uint)index <= (uint)Length, "Caller should've performed bounds checking.");
@@ -222,7 +232,7 @@ namespace System
             }
 
             byte[] bytes = new byte[length];
-            Buffer.Memmove(ref bytes.GetRawSzArrayData(), ref DangerousGetMutableReferenceToElementAtIndex(startIndex), (uint)length);
+            Buffer.Memmove(ref bytes.GetRawSzArrayData(), ref DangerousGetMutableReference(startIndex), (uint)length);
             return bytes;
         }
 
