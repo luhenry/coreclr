@@ -8,7 +8,6 @@ using System.Text;
 
 namespace System
 {
-    // This is an experimental type and not referenced from CoreFx but needs to exists and be public so we can prototype in CoreFxLab.
     public sealed partial class Utf8String
     {
         /*

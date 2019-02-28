@@ -3,12 +3,16 @@
 // See the LICENSE file in the project root for more information.
 
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Internal.Runtime.CompilerServices;
 
 namespace System
 {
-    // This is an experimental type and not referenced from CoreFx but needs to exists and be public so we can prototype in CoreFxLab.
+    /// <summary>
+    /// Represents an immutable string of UTF-8 code units.
+    /// </summary>
     public sealed partial class Utf8String : IEquatable<Utf8String>
     {
         /*
@@ -49,6 +53,47 @@ namespace System
         public int Length => _length;
 
         /*
+         * INSTANCE INDEXERS
+         */
+
+        /// <summary>
+        /// Gets the <see cref="Char8"/> at the specified position.
+        /// </summary>
+        public Char8 this[int index]
+        {
+            get
+            {
+                // Just like String, we don't allow indexing into the null terminator itself.
+
+                if ((uint)index >= (uint)Length)
+                {
+                    ThrowHelper.ThrowArgumentOutOfRange_IndexException();
+                }
+
+                return Unsafe.Add(ref DangerousGetMutableReference(), index);
+            }
+        }
+
+        /// <summary>
+        /// Gets the <see cref="Char8"/> at the specified position.
+        /// </summary>
+        public Char8 this[Index index]
+        {
+            get
+            {
+                // Just like String, we don't allow indexing into the null terminator itself.
+
+                int actualIndex = index.GetOffset(Length);
+                return this[actualIndex];
+            }
+        }
+
+        /// <summary>
+        /// Gets a substring of this <see cref="Utf8String"/> based on the provided <paramref name="range"/>.
+        /// </summary>
+        public Utf8String this[Range range] => Substring(range);
+
+        /*
          * METHODS
          */
 
@@ -58,6 +103,18 @@ namespace System
         /// </summary>
         /// <returns></returns>
         internal ref byte DangerousGetMutableReference() => ref Unsafe.AsRef(in _firstByte);
+
+        /// <summary>
+        /// Returns a <em>mutable</em> reference to the element at index <paramref name="index"/>
+        /// of this <see cref="Utf8String"/> instance. The index is not bounds-checked.
+        /// </summary>
+        internal ref byte DangerousGetMutableReferenceToElementAtIndex(int index)
+        {
+            // Allow retrieving references to the null terminator.
+            Debug.Assert((uint)index <= (uint)Length, "Caller should've performed bounds checking.");
+
+            return ref Unsafe.Add(ref DangerousGetMutableReference(), index);
+        }
 
         /// <summary>
         /// Performs an equality comparison using a <see cref="StringComparison.Ordinal"/> comparer.
@@ -118,10 +175,56 @@ namespace System
         }
 
         /// <summary>
-        /// Gets an immutable reference that can be used in a <see langword="fixed"/> statement.
+        /// Gets an immutable reference that can be used in a <see langword="fixed"/> statement. The resulting
+        /// reference can be pinned and used as a null-terminated <em>LPCUTF8STR</em>.
         /// </summary>
+        /// <remarks>
+        /// If this <see cref="Utf8String"/> instance is empty, returns a reference to the null terminator.
+        /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)] // for compiler use only
         public ref readonly byte GetPinnableReference() => ref _firstByte;
+
+        /// <summary>
+        /// Returns <see langword="true"/> if <paramref name="value"/> is <see langword="null"/> or zero length;
+        /// <see langword="false"/> otherwise.
+        /// </summary>
+        public static bool IsNullOrEmpty(Utf8String value)
+        {
+            // Copied from String.IsNullOrEmpty. See that method for detailed comments on why this pattern is used.
+            return (value is null || 0u >= (uint)value.Length) ? true : false;
+        }
+
+        /// <summary>
+        /// Returns the entire <see cref="Utf8String"/> as an array of bytes.
+        /// </summary>
+        public byte[] ToByteArray()
+        {
+            if (Length == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            byte[] bytes = new byte[Length];
+            Buffer.Memmove(ref bytes.GetRawSzArrayData(), ref DangerousGetMutableReference(), (uint)Length);
+            return bytes;
+        }
+
+        /// <summary>
+        /// Returns a substring of this <see cref="Utf8String"/> as an array of bytes.
+        /// </summary>
+        public byte[] ToByteArray(int startIndex, int length)
+        {
+            ValidateStartIndexAndLength(startIndex, length);
+
+            if (length == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            byte[] bytes = new byte[length];
+            Buffer.Memmove(ref bytes.GetRawSzArrayData(), ref DangerousGetMutableReferenceToElementAtIndex(startIndex), (uint)length);
+            return bytes;
+        }
 
         /// <summary>
         /// Converts this <see cref="Utf8String"/> instance to a <see cref="string"/>.
