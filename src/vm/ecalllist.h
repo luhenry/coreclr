@@ -116,6 +116,7 @@ FCFuncStart(gStringFuncs)
     FCFuncElement("Intern", AppDomainNative::GetOrInternString)
 FCFuncEnd()
 
+#ifdef FEATURE_UTF8STRING
 FCFuncStart(gUtf8StringFuncs)
     FCDynamic("FastAllocate", CORINFO_INTRINSIC_Illegal, ECall::FastAllocateUtf8String)
     FCDynamicSig(COR_CTOR_METHOD_NAME, &gsig_IM_ReadOnlySpanOfByte_RetVoid, CORINFO_INTRINSIC_Illegal, ECall::Utf8StringCtorReadOnlySpanOfByteManaged)
@@ -126,6 +127,7 @@ FCFuncStart(gUtf8StringFuncs)
     FCDynamicSig(COR_CTOR_METHOD_NAME, &gsig_IM_PtrChar_RetVoid, CORINFO_INTRINSIC_Illegal, ECall::Utf8StringCtorCharPtrManaged)
     FCDynamicSig(COR_CTOR_METHOD_NAME, &gsig_IM_Str_RetVoid, CORINFO_INTRINSIC_Illegal, ECall::Utf8StringCtorStringManaged)
 FCFuncEnd()
+#endif // FEATURE_UTF8STRING
 
 FCFuncStart(gValueTypeFuncs)
     FCFuncElement("CanCompareBits", ValueTypeHelper::CanCompareBits)
@@ -1303,7 +1305,9 @@ FCClassElement("TypedReference", "System", gTypedReferenceFuncs)
 #ifdef FEATURE_COMINTEROP
 FCClassElement("UriMarshaler", "System.StubHelpers", gUriMarshalerFuncs)
 #endif
+#ifdef FEATURE_UTF8STRING
 FCClassElement("Utf8String", "System", gUtf8StringFuncs)
+#endif // FEATURE_UTF8STRING
 FCClassElement("ValueClassMarshaler", "System.StubHelpers", gValueClassMarshalerFuncs)
 FCClassElement("ValueType", "System", gValueTypeFuncs)
 #ifdef FEATURE_COMINTEROP

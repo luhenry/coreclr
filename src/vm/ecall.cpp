@@ -55,6 +55,7 @@ static_assert_no_msg(ECallCtor_First + 8 == ECall::CtorSBytePtrStartLengthEncodi
 
 #define NumberOfStringConstructors 9
 
+#ifdef FEATURE_UTF8STRING
 // METHOD__UTF8STRING__CTORF_XXX has to be in same order as ECall::Utf8StringCtorCharXxx
 #define METHOD__UTF8STRING__CTORF_FIRST METHOD__UTF8_STRING__CTORF_READONLYSPANOFBYTE
 static_assert_no_msg(METHOD__UTF8STRING__CTORF_FIRST + 0 == METHOD__UTF8_STRING__CTORF_READONLYSPANOFBYTE);
@@ -76,6 +77,7 @@ static_assert_no_msg(ECallUtf8String_Ctor_First + 5 == ECall::Utf8StringCtorChar
 static_assert_no_msg(ECallUtf8String_Ctor_First + 6 == ECall::Utf8StringCtorStringManaged);
 
 #define NumberOfUtf8StringConstructors 7
+#endif // FEATURE_UTF8STRING
 
 void ECall::PopulateManagedStringConstructors()
 {
@@ -83,9 +85,8 @@ void ECall::PopulateManagedStringConstructors()
 
     INDEBUG(static bool fInitialized = false);
     _ASSERTE(!fInitialized);    // assume this method is only called once
-    _ASSERTE(g_pStringClass != NULL);
-    _ASSERTE(g_pUtf8StringClass != NULL);
 
+    _ASSERTE(g_pStringClass != NULL);
     for (int i = 0; i < NumberOfStringConstructors; i++)
     {
         MethodDesc* pMD = MscorlibBinder::GetMethod((BinderMethodID)(METHOD__STRING__CTORF_FIRST + i));
@@ -96,6 +97,8 @@ void ECall::PopulateManagedStringConstructors()
         ECall::DynamicallyAssignFCallImpl(pDest, ECallCtor_First + i);
     }
 
+#ifdef FEATURE_UTF8STRING
+    _ASSERTE(g_pUtf8StringClass != NULL);
     for (int i = 0; i < NumberOfUtf8StringConstructors; i++)
     {
         MethodDesc* pMD = MscorlibBinder::GetMethod((BinderMethodID)(METHOD__UTF8STRING__CTORF_FIRST + i));
@@ -105,6 +108,7 @@ void ECall::PopulateManagedStringConstructors()
 
         ECall::DynamicallyAssignFCallImpl(pDest, ECallUtf8String_Ctor_First + i);
     }
+#endif // FEATURE_UTF8STRING
 
     INDEBUG(fInitialized = true);
 }

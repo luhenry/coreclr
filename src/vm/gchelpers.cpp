@@ -1030,6 +1030,7 @@ STRINGREF SlowAllocateString( DWORD cchStringLength )
     return( ObjectToSTRINGREF(orObject) );
 }
 
+#ifdef FEATURE_UTF8STRING
 UTF8STRINGREF SlowAllocateUtf8String(DWORD cchStringLength)
 {
     CONTRACTL{
@@ -1102,6 +1103,7 @@ UTF8STRINGREF SlowAllocateUtf8String(DWORD cchStringLength)
 
     return( ObjectToUTF8STRINGREF(orObject) );
 }
+#endif // FEATURE_UTF8STRING
 
 #ifdef FEATURE_COMINTEROP_UNMANAGED_ACTIVATION
 // OBJECTREF AllocateComClassObject(ComClassFactory* pComClsFac)

@@ -873,7 +873,9 @@ typedef DPTR(UPTRArray) PTR_UPTRArray;
 typedef DPTR(PTRArray)  PTR_PTRArray;
 
 class StringObject;
+#ifdef FEATURE_UTF8STRING
 class Utf8StringObject;
+#endif // FEATURE_UTF8STRING
 
 #ifdef USE_CHECKED_OBJECTREFS
 typedef REF<ArrayBase>  BASEARRAYREF;
@@ -892,7 +894,9 @@ typedef REF<UPTRArray>  UPTRARRAYREF;
 typedef REF<CHARArray>  CHARARRAYREF;
 typedef REF<PTRArray>   PTRARRAYREF;  // Warning: Use PtrArray only for single dimensional arrays, not multidim arrays.
 typedef REF<StringObject> STRINGREF;
+#ifdef FEATURE_UTF8STRING
 typedef REF<Utf8StringObject> UTF8STRINGREF;
+#endif // FEATURE_UTF8STRING
 
 #else   // USE_CHECKED_OBJECTREFS
 
@@ -912,7 +916,9 @@ typedef PTR_UPTRArray   UPTRARRAYREF;
 typedef PTR_CHARArray   CHARARRAYREF;
 typedef PTR_PTRArray    PTRARRAYREF;  // Warning: Use PtrArray only for single dimensional arrays, not multidim arrays.
 typedef PTR_StringObject STRINGREF;
+#ifdef FEATURE_UTF8STRING
 typedef PTR_Utf8StringObject UTF8STRINGREF;
+#endif // FEATURE_UTF8STRING
 
 #endif // USE_CHECKED_OBJECTREFS
 
@@ -1205,6 +1211,7 @@ public:
 
 };
 
+#ifdef FEATURE_UTF8STRING
 class Utf8StringObject : public Object
 {
 #ifdef DACCESS_COMPILE
@@ -1252,6 +1259,7 @@ public:
     static DWORD GetBaseSize();
     static SIZE_T GetSize(DWORD stringLength);
 };
+#endif // FEATURE_UTF8STRING
 
 // This is the Method version of the Reflection object.
 //  A Method has adddition information.

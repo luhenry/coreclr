@@ -2895,6 +2895,7 @@ HCIMPL1(StringObject*, AllocateString_MP_FastPortable, DWORD stringLength)
 }
 HCIMPLEND
 
+#ifdef FEATURE_UTF8STRING
 HCIMPL1(Utf8StringObject*, AllocateUtf8String_MP_FastPortable, DWORD stringLength)
 {
     FCALL_CONTRACT;
@@ -2947,6 +2948,7 @@ HCIMPL1(Utf8StringObject*, AllocateUtf8String_MP_FastPortable, DWORD stringLengt
     return HCCALL1(FramedAllocateUtf8String, stringLength);
 }
 HCIMPLEND
+#endif // FEATURE_UTF8STRING
 
 #include <optdefault.h>
 
@@ -2986,6 +2988,7 @@ HCIMPL1(StringObject*, FramedAllocateString, DWORD stringLength)
 }
 HCIMPLEND
 
+#ifdef FEATURE_UTF8STRING
 HCIMPL1(Utf8StringObject*, FramedAllocateUtf8String, DWORD stringLength)
 {
     FCALL_CONTRACT;
@@ -2999,6 +3002,7 @@ HCIMPL1(Utf8StringObject*, FramedAllocateUtf8String, DWORD stringLength)
     return((Utf8StringObject*) OBJECTREFToObject(result));
 }
 HCIMPLEND
+#endif // FEATURE_UTF8STRING
 
 /*********************************************************************/
 OBJECTHANDLE ConstructStringLiteral(CORINFO_MODULE_HANDLE scopeHnd, mdToken metaTok)

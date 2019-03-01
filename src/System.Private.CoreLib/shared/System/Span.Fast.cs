@@ -322,13 +322,13 @@ namespace System
             {
                 return new string(new ReadOnlySpan<char>(ref Unsafe.As<T, char>(ref _pointer.Value), _length));
             }
-#if CORECLR
+#if FEATURE_UTF8STRING
             else if (typeof(T) == typeof(Char8))
             {
                 // TODO_UTF8STRING: Improve the performance of the below line.
                 return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(ref Unsafe.As<T, byte>(ref _pointer.Value), _length));
             }
-#endif
+#endif // FEATURE_UTF8STRING
             return string.Format("System.Span<{0}>[{1}]", typeof(T).Name, _length);
         }
 
