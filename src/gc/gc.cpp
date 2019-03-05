@@ -37749,3 +37749,123 @@ void PopulateDacVars(GcDacVars *gcDacVars)
 #endif // MULTIPLE_HEAPS
 #endif // DACCESS_COMPILE
 }
+
+GCToggleRef::Callback      GCToggleRef::p_Callback;
+GCToggleRef::ArrayElement *GCToggleRef::p_Array;
+size_t                     GCToggleRef::p_ArraySize;
+size_t                     GCToggleRef::p_ArrayCapacity;
+
+void GCToggleRef::Add (Object *obj, BOOL strong_ref)
+{
+    if (p_Callback == nullptr)
+    {
+        return;
+    }
+
+    enter_spin_lock (&gc_heap::gc_lock);
+
+    EnsureCapacity ();
+    p_Array [p_ArraySize].strong_ref = strong_ref ? obj : NULL;
+    p_Array [p_ArraySize].weak_ref = strong_ref ? NULL : obj;
+    p_ArraySize += 1;
+
+    leave_spin_lock (&gc_heap::gc_lock);
+}
+
+void GCToggleRef::Process (void)
+{
+    size_t w = 0;
+
+    for (size_t i = 0; i < p_ArraySize; ++i)
+    {
+        Object *obj;
+
+        if (p_Array[i].strong_ref != nullptr)
+            obj = p_Array[i].strong_ref;
+        else if (p_Array[i].weak_ref != nullptr)
+            obj = p_Array[i].weak_ref;
+        else
+            continue;
+
+        switch (p_Callback (obj)) {
+        case State::Drop:
+            break;
+        case State::Strong:
+            p_Array[w].strong_ref = obj;
+            p_Array[w].weak_ref = NULL;
+            w += 1;
+            break;
+        case State::Weak:
+            p_Array[w].strong_ref = NULL;
+            p_Array[w].weak_ref = obj;
+            w += 1;
+            break;
+        default:
+            assert (false);
+            break;
+        }
+    }
+
+    p_ArraySize = w;
+}
+
+void GCToggleRef::Mark (gc_heap *gc THREAD_NUMBER_DCL)
+{
+    ASSERT_HOLDING_SPIN_LOCK (&gc_heap::gc_lock);
+
+    for (size_t i = 0; i < p_ArraySize; ++i)
+    {
+        Object *obj = p_Array [i].strong_ref;
+        if (obj != nullptr)
+        {
+            gc->mark_object ((uint8_t*)obj THREAD_NUMBER_ARG);
+        }
+    }
+}
+
+BOOL IsObjectAlive (Object *obj) { assert (false); return false; }
+
+void GCToggleRef::Clear (gc_heap *gc THREAD_NUMBER_DCL)
+{
+    ASSERT_HOLDING_SPIN_LOCK (&gc_heap::gc_lock);
+
+    for (size_t i = 0; i < p_ArraySize; ++i)
+    {
+        Object *obj = p_Array [i].weak_ref;
+        if (obj != nullptr)
+        {
+            if (!IsObjectAlive (obj))
+            {
+                p_Array [i].weak_ref = nullptr;
+            }
+            else
+            {
+                gc->mark_object ((uint8_t*)obj THREAD_NUMBER_ARG);
+            }
+        }
+    }
+}
+
+void GCToggleRef::EnsureCapacity (void)
+{
+    ASSERT_HOLDING_SPIN_LOCK (&gc_heap::gc_lock);
+
+    if (p_Array == nullptr) {
+        p_ArraySize = 0;
+        p_ArrayCapacity = 32;
+        p_Array = new (nothrow) ArrayElement[p_ArrayCapacity];
+    }
+
+    assert (p_ArraySize <= p_ArrayCapacity);
+    if (p_ArraySize == p_ArrayCapacity)
+    {
+        p_ArrayCapacity *= 2;
+
+        ArrayElement *tmpArray = new (nothrow) ArrayElement[p_ArrayCapacity];
+
+        memcpy (tmpArray, p_Array, p_ArraySize * sizeof (ArrayElement));
+
+        delete p_Array;
+        p_Array = tmpArray;
+    }
+}

@@ -1076,6 +1076,7 @@ enum interesting_data_point
 class gc_heap
 {
     friend class GCHeap;
+    friend class GCToggleRef;
 #ifdef FEATURE_PREMORTEM_FINALIZATION
     friend class CFinalize;
 #endif // FEATURE_PREMORTEM_FINALIZATION
@@ -4570,3 +4571,44 @@ void YieldProcessorScalingFactor()
         YieldProcessor();
     } while (--n != 0);
 }
+
+class GCToggleRef
+{
+    friend class gc_heap;
+
+  public:
+    enum State {
+        Drop,
+        Strong,
+        Weak
+    };
+
+    typedef State (*Callback) (Object*);
+
+    static void RegisterCallback (Callback callback)
+    {
+        p_Callback = callback;
+    }
+
+    static void Add (Object *obj, BOOL strong_ref);
+
+    static void Process (void);
+
+  private:
+    static void Mark (gc_heap *gc THREAD_NUMBER_DCL);
+
+    static void Clear (gc_heap *gc THREAD_NUMBER_DCL);
+
+    struct ArrayElement
+    {
+        Object *strong_ref;
+        Object *weak_ref;
+    };
+
+    static Callback      p_Callback;
+    static ArrayElement *p_Array;
+    static size_t        p_ArraySize;
+    static size_t        p_ArrayCapacity;
+
+    static void EnsureCapacity (void);
+};
