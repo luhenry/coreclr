@@ -4577,7 +4577,7 @@ class GCToggleRef
     friend class gc_heap;
 
   public:
-    enum State {
+    enum State : int32_t {
         Drop,
         Strong,
         Weak
@@ -4590,12 +4590,13 @@ class GCToggleRef
         p_Callback = callback;
     }
 
-    static void Add (Object *obj, BOOL strong_ref);
+    static void Add (OBJECTREF obj, BOOL strong_ref);
 
     static void Process (void);
 
   private:
     static Callback      p_Callback;
+    static HHANDLETABLE  p_HandleTable;
     static OBJECTHANDLE *p_Array;
     static size_t        p_ArraySize;
     static size_t        p_ArrayCapacity;

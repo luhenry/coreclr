@@ -17346,6 +17346,8 @@ void gc_heap::garbage_collect (int n)
 #endif //MULTIPLE_HEAPS
 
 done:
+    GCToggleRef::Process ();
+
     if (settings.pause_mode == pause_no_gc)
         allocate_for_no_gc_after_gc();
 
@@ -37751,28 +37753,64 @@ void PopulateDacVars(GcDacVars *gcDacVars)
 }
 
 GCToggleRef::Callback  GCToggleRef::p_Callback;
-OBJECTHANDLE          *GCToggleRef::p_Array = nullptr;
+HHANDLETABLE           GCToggleRef::p_HandleTable;
+OBJECTHANDLE          *GCToggleRef::p_Array;
 size_t                 GCToggleRef::p_ArraySize;
 size_t                 GCToggleRef::p_ArrayCapacity;
 
-void GCToggleRef::Add (Object *obj, BOOL strong_ref)
+void coreclr_toggleref_add (void *obj, int32_t strong_ref)
+{
+    OBJECTREF objref = ObjectToOBJECTREF (static_cast<Object*>(obj));
+    //FIXME: do preemptive/cooperative transition?
+    GCToggleRef::Add (objref, static_cast<BOOL>(strong_ref));
+}
+
+void coreclr_toggleref_register_callback (int32_t (*callback) (void *obj))
+{
+    GCToggleRef::RegisterCallback (reinterpret_cast<GCToggleRef::Callback>(callback));
+}
+
+void GCToggleRef::Add (OBJECTREF obj, BOOL strong_ref)
 {
     if (p_Callback == nullptr)
     {
         return;
     }
 
-    OBJECTHANDLE hnd = GetAppDomain()->GetHandleStore()->CreateHandleOfType(obj, strong_ref ? HandleType::HNDTYPE_DEFAULT : HandleType::HNDTYPE_WEAK_DEFAULT);
+    if (p_Array == nullptr)
+    {
+        enter_spin_lock (&gc_heap::gc_lock);
+
+        if (p_Array == nullptr)
+        {
+            static const uint32_t s_rgTypeFlags[] =
+            {
+                HNDF_NORMAL,    // HNDTYPE_WEAK_SHORT
+                HNDF_EXTRAINFO, // HNDTYPE_WEAK_LONG, HNDTYPE_WEAK_DEFAULT
+                HNDF_EXTRAINFO, // HNDTYPE_STRONG, HNDTYPE_DEFAULT
+                HNDF_NORMAL,    // HNDTYPE_PINNED
+                HNDF_NORMAL,    // HNDTYPE_VARIABLE
+                HNDF_NORMAL,    // HNDTYPE_REFCOUNTED
+                HNDF_NORMAL,    // HNDTYPE_DEPENDENT
+                HNDF_NORMAL,    // HNDTYPE_ASYNCPINNED
+                HNDF_NORMAL,    // HNDTYPE_SIZEDREF
+                HNDF_NORMAL,    // HNDTYPE_WEAK_WINRT
+            };
+
+            p_HandleTable = ::HndCreateHandleTable(s_rgTypeFlags, _countof(s_rgTypeFlags), ADIndex(1));
+            p_ArraySize = 0;
+            p_ArrayCapacity = 32;
+            p_Array = new (nothrow) OBJECTHANDLE[p_ArrayCapacity];
+        }
+
+        leave_spin_lock (&gc_heap::gc_lock);
+    }
+
+
+    OBJECTHANDLE hnd = ::HndCreateHandle (p_HandleTable, strong_ref ? HandleType::HNDTYPE_DEFAULT : HandleType::HNDTYPE_WEAK_DEFAULT, obj);
     _ASSERTE (hnd);
 
     enter_spin_lock (&gc_heap::gc_lock);
-
-    if (p_Array == nullptr)
-    {
-        p_ArraySize = 0;
-        p_ArrayCapacity = 32;
-        p_Array = new (nothrow) OBJECTHANDLE[p_ArrayCapacity];
-    }
 
     _ASSERTE (p_ArraySize <= p_ArrayCapacity);
     if (p_ArraySize == p_ArrayCapacity)
@@ -37794,32 +37832,34 @@ void GCToggleRef::Add (Object *obj, BOOL strong_ref)
 
 void GCToggleRef::Process (void)
 {
+    ASSERT_HOLDING_SPIN_LOCK(&gc_heap::gc_lock);
+
     size_t w = 0;
 
     for (size_t i = 0; i < p_ArraySize; ++i)
     {
         OBJECTHANDLE hnd = p_Array[i];
-        if (hnd == 0)
+        _ASSERTE (hnd);
+
+        HandleType type = static_cast<HandleType>(::GetVariableHandleType (hnd));
+        _ASSERTE (type == HNDTYPE_DEFAULT || type == HNDTYPE_WEAK_DEFAULT);
+
+        Object *obj = OBJECTREFToObject (::HndFetchHandle (hnd));
+        if (type == HNDTYPE_WEAK_DEFAULT && obj == nullptr)
         {
+            ::HndDestroyHandle (p_HandleTable, type, hnd);
             continue;
         }
 
-        OBJECTREF obj = ::HndFetchHandle (hnd);
-        if (::GetVariableHandleType (hnd) == HNDTYPE_WEAK_DEFAULT && OBJECTREFToObject (obj) == nullptr)
-        {
-            ::HndDestroyHandleOfUnknownType (::HndGetHandleTable (hnd), hnd);
-            continue;
-        }
-
-        switch (p_Callback (OBJECTREFToObject (obj))) {
+        switch (p_Callback (obj)) {
         case State::Drop:
-            ::HndDestroyHandleOfUnknownType (::HndGetHandleTable (hnd), hnd);
+            ::HndDestroyHandle (p_HandleTable, type, hnd);
             break;
         case State::Strong:
-            ::UpdateVariableHandleType (p_Array[w++], HNDTYPE_DEFAULT);
+            ::UpdateVariableHandleType (p_Array [w++] = p_Array[i], HNDTYPE_DEFAULT);
             break;
         case State::Weak:
-            ::UpdateVariableHandleType (p_Array[w++], HNDTYPE_WEAK_DEFAULT);
+            ::UpdateVariableHandleType (p_Array [w++] = p_Array[i], HNDTYPE_WEAK_DEFAULT);
             break;
         default:
             _ASSERTE (false);
