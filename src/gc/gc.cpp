@@ -37750,10 +37750,10 @@ void PopulateDacVars(GcDacVars *gcDacVars)
 #endif // DACCESS_COMPILE
 }
 
-GCToggleRef::Callback      GCToggleRef::p_Callback;
-GCToggleRef::ArrayElement *GCToggleRef::p_Array;
-size_t                     GCToggleRef::p_ArraySize;
-size_t                     GCToggleRef::p_ArrayCapacity;
+GCToggleRef::Callback  GCToggleRef::p_Callback;
+OBJECTHANDLE          *GCToggleRef::p_Array = nullptr;
+size_t                 GCToggleRef::p_ArraySize;
+size_t                 GCToggleRef::p_ArrayCapacity;
 
 void GCToggleRef::Add (Object *obj, BOOL strong_ref)
 {
@@ -37762,12 +37762,32 @@ void GCToggleRef::Add (Object *obj, BOOL strong_ref)
         return;
     }
 
+    OBJECTHANDLE hnd = GetAppDomain()->GetHandleStore()->CreateHandleOfType(obj, strong_ref ? HandleType::HNDTYPE_DEFAULT : HandleType::HNDTYPE_WEAK_DEFAULT);
+    _ASSERTE (hnd);
+
     enter_spin_lock (&gc_heap::gc_lock);
 
-    EnsureCapacity ();
-    p_Array [p_ArraySize].strong_ref = strong_ref ? obj : NULL;
-    p_Array [p_ArraySize].weak_ref = strong_ref ? NULL : obj;
-    p_ArraySize += 1;
+    if (p_Array == nullptr)
+    {
+        p_ArraySize = 0;
+        p_ArrayCapacity = 32;
+        p_Array = new (nothrow) OBJECTHANDLE[p_ArrayCapacity];
+    }
+
+    _ASSERTE (p_ArraySize <= p_ArrayCapacity);
+    if (p_ArraySize == p_ArrayCapacity)
+    {
+        p_ArrayCapacity *= 2;
+
+        OBJECTHANDLE *tmp_Array = new (nothrow) OBJECTHANDLE[p_ArrayCapacity];
+
+        memcpy (tmp_Array, p_Array, p_ArraySize * sizeof (OBJECTHANDLE));
+
+        delete p_Array;
+        p_Array = tmp_Array;
+    }
+
+    p_Array [p_ArraySize++] = hnd;
 
     leave_spin_lock (&gc_heap::gc_lock);
 }
@@ -37778,94 +37798,34 @@ void GCToggleRef::Process (void)
 
     for (size_t i = 0; i < p_ArraySize; ++i)
     {
-        Object *obj;
-
-        if (p_Array[i].strong_ref != nullptr)
-            obj = p_Array[i].strong_ref;
-        else if (p_Array[i].weak_ref != nullptr)
-            obj = p_Array[i].weak_ref;
-        else
+        OBJECTHANDLE hnd = p_Array[i];
+        if (hnd == 0)
+        {
             continue;
+        }
 
-        switch (p_Callback (obj)) {
+        OBJECTREF obj = ::HndFetchHandle (hnd);
+        if (::GetVariableHandleType (hnd) == HNDTYPE_WEAK_DEFAULT && OBJECTREFToObject (obj) == nullptr)
+        {
+            ::HndDestroyHandleOfUnknownType (::HndGetHandleTable (hnd), hnd);
+            continue;
+        }
+
+        switch (p_Callback (OBJECTREFToObject (obj))) {
         case State::Drop:
+            ::HndDestroyHandleOfUnknownType (::HndGetHandleTable (hnd), hnd);
             break;
         case State::Strong:
-            p_Array[w].strong_ref = obj;
-            p_Array[w].weak_ref = NULL;
-            w += 1;
+            ::UpdateVariableHandleType (p_Array[w++], HNDTYPE_DEFAULT);
             break;
         case State::Weak:
-            p_Array[w].strong_ref = NULL;
-            p_Array[w].weak_ref = obj;
-            w += 1;
+            ::UpdateVariableHandleType (p_Array[w++], HNDTYPE_WEAK_DEFAULT);
             break;
         default:
-            assert (false);
+            _ASSERTE (false);
             break;
         }
     }
 
     p_ArraySize = w;
-}
-
-void GCToggleRef::Mark (gc_heap *gc THREAD_NUMBER_DCL)
-{
-    ASSERT_HOLDING_SPIN_LOCK (&gc_heap::gc_lock);
-
-    for (size_t i = 0; i < p_ArraySize; ++i)
-    {
-        Object *obj = p_Array [i].strong_ref;
-        if (obj != nullptr)
-        {
-            gc->mark_object ((uint8_t*)obj THREAD_NUMBER_ARG);
-        }
-    }
-}
-
-BOOL IsObjectAlive (Object *obj) { assert (false); return false; }
-
-void GCToggleRef::Clear (gc_heap *gc THREAD_NUMBER_DCL)
-{
-    ASSERT_HOLDING_SPIN_LOCK (&gc_heap::gc_lock);
-
-    for (size_t i = 0; i < p_ArraySize; ++i)
-    {
-        Object *obj = p_Array [i].weak_ref;
-        if (obj != nullptr)
-        {
-            if (!IsObjectAlive (obj))
-            {
-                p_Array [i].weak_ref = nullptr;
-            }
-            else
-            {
-                gc->mark_object ((uint8_t*)obj THREAD_NUMBER_ARG);
-            }
-        }
-    }
-}
-
-void GCToggleRef::EnsureCapacity (void)
-{
-    ASSERT_HOLDING_SPIN_LOCK (&gc_heap::gc_lock);
-
-    if (p_Array == nullptr) {
-        p_ArraySize = 0;
-        p_ArrayCapacity = 32;
-        p_Array = new (nothrow) ArrayElement[p_ArrayCapacity];
-    }
-
-    assert (p_ArraySize <= p_ArrayCapacity);
-    if (p_ArraySize == p_ArrayCapacity)
-    {
-        p_ArrayCapacity *= 2;
-
-        ArrayElement *tmpArray = new (nothrow) ArrayElement[p_ArrayCapacity];
-
-        memcpy (tmpArray, p_Array, p_ArraySize * sizeof (ArrayElement));
-
-        delete p_Array;
-        p_Array = tmpArray;
-    }
 }

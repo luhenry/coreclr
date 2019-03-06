@@ -4595,20 +4595,8 @@ class GCToggleRef
     static void Process (void);
 
   private:
-    static void Mark (gc_heap *gc THREAD_NUMBER_DCL);
-
-    static void Clear (gc_heap *gc THREAD_NUMBER_DCL);
-
-    struct ArrayElement
-    {
-        Object *strong_ref;
-        Object *weak_ref;
-    };
-
     static Callback      p_Callback;
-    static ArrayElement *p_Array;
+    static OBJECTHANDLE *p_Array;
     static size_t        p_ArraySize;
     static size_t        p_ArrayCapacity;
-
-    static void EnsureCapacity (void);
 };

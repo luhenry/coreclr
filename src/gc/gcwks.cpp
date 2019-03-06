@@ -16,6 +16,7 @@
 #include "handletable.inl"
 #include "gcenv.inl"
 #include "gceventstatus.h"
+#include "objecthandle.h"
 
 #ifdef SERVER_GC
 #undef SERVER_GC
