@@ -298,7 +298,4 @@ inline bool IsServerHeap()
 #endif // FEATURE_SVR_GC
 }
 
-extern "C" void coreclr_toggleref_register_callback (int32_t (*callback) (void *obj));
-extern "C" void coreclr_toggleref_add (void *obj, int32_t strong_ref);
-
 #endif // __GC_H

@@ -37758,18 +37758,6 @@ OBJECTHANDLE          *GCToggleRef::p_Array;
 size_t                 GCToggleRef::p_ArraySize;
 size_t                 GCToggleRef::p_ArrayCapacity;
 
-void coreclr_toggleref_add (void *obj, int32_t strong_ref)
-{
-    OBJECTREF objref = ObjectToOBJECTREF (static_cast<Object*>(obj));
-    //FIXME: do preemptive/cooperative transition?
-    GCToggleRef::Add (objref, static_cast<BOOL>(strong_ref));
-}
-
-void coreclr_toggleref_register_callback (int32_t (*callback) (void *obj))
-{
-    GCToggleRef::RegisterCallback (reinterpret_cast<GCToggleRef::Callback>(callback));
-}
-
 void GCToggleRef::Add (OBJECTREF obj, BOOL strong_ref)
 {
     if (p_Callback == nullptr)

@@ -414,3 +414,22 @@ int coreclr_execute_assembly(
 
     return hr;
 }
+
+extern "C"
+DLLEXPORT
+void coreclr_toggleref_add(
+            void *obj,
+            int strong_ref)
+{
+    // OBJECTREF objref = ObjectToOBJECTREF (static_cast<Object*>(obj));
+    // //FIXME: do preemptive/cooperative transition?
+    // GCToggleRef::Add (objref, static_cast<BOOL>(strong_ref));
+}
+
+extern "C"
+DLLEXPORT
+void coreclr_toggleref_register_callback(
+            int (*callback) (void *obj))
+{
+    // GCToggleRef::RegisterCallback (reinterpret_cast<GCToggleRef::Callback>(callback));
+}

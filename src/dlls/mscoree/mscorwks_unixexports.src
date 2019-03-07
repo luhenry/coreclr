@@ -5,6 +5,10 @@ coreclr_initialize
 coreclr_shutdown
 coreclr_shutdown_2
 
+; Xamarin.Mac hosting API
+coreclr_toggleref_register_callback
+coreclr_toggleref_add
+
 ; il{d}asm
 MetaDataGetDispenser
 GetMetaDataInternalInterface
