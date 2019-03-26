@@ -1219,16 +1219,31 @@ int GetCurrentProcessCpuCount()
             count = 64;
     }
 
-#ifdef FEATURE_PAL
-    uint32_t cpuLimit;
-
-    if (PAL_GetCpuLimit(&cpuLimit) && cpuLimit < count)
-        count = cpuLimit;
-#endif
-
     cCPUs = count;
 
     return count;
+}
+
+double GetCurrentProcessCpuBudget()
+{
+#ifdef FEATURE_PAL
+    static double bCPUs = 0.0;
+
+    if (bCPUs != 0.0)
+        return bCPUs;
+
+    double budget;
+    if (!PAL_GetCpuLimit(&budget))
+    {
+        budget = (double) GetCurrentProcessCpuCount();
+    }
+
+    bCPUs = budget;
+
+    return budget;
+#else
+    return (double) GetCurrentProcessCpuCount();
+#endif
 }
 
 DWORD_PTR GetCurrentProcessCpuMask()

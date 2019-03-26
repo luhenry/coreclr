@@ -1413,6 +1413,7 @@ public:
 };
 
 int GetCurrentProcessCpuCount();
+double GetCurrentProcessCpuBudget();
 DWORD_PTR GetCurrentProcessCpuMask();
 
 uint32_t GetOsPageSize();

@@ -2454,7 +2454,7 @@ PAL_GetPhysicalMemoryUsed(size_t* val);
 PALIMPORT
 BOOL
 PALAPI
-PAL_GetCpuLimit(UINT* val);
+PAL_GetCpuLimit(double* val);
 
 PALIMPORT
 size_t

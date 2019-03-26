@@ -348,9 +348,23 @@ BOOL ThreadpoolMgr::Initialize()
     //ThreadPool_CPUGroup
     CPUGroupInfo::EnsureInitialized();
     if (CPUGroupInfo::CanEnableGCCPUGroups() && CPUGroupInfo::CanEnableThreadUseAllCpuGroups())
+    {
         NumberOfProcessors = CPUGroupInfo::GetNumActiveProcessors();
+    }
     else
-        NumberOfProcessors = GetCurrentProcessCpuCount();
+    {
+        int cpuCount = GetCurrentProcessCpuCount();
+        double cpuBudget = GetCurrentProcessCpuBudget();
+        _ASSERTE(1.0 <= cpuBudget && cpuBudget < (double) UINT_MAX);
+
+        if (cpuBudget < cpuCount)
+        {
+            cpuCount = (int) ::round(cpuBudget);
+        }
+
+        NumberOfProcessors = cpuCount;
+    }
+
     InitPlatformVariables();
 
     EX_TRY

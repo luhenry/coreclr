@@ -86,11 +86,11 @@ public:
         return result;
     }
 
-    static bool GetCpuLimit(UINT *val)
+    static bool GetCpuLimit(double *val)
     {
         long long quota;
         long long period;
-        long long cpu_count;
+        double cpu_count;
 
         quota = ReadCpuCGroupValue(CFS_QUOTA_FILENAME);
         if (quota <= 0)
@@ -103,11 +103,11 @@ public:
         // Cannot have less than 1 CPU
         if (quota <= period)
         {
-            *val = 1;
+            *val = 1.0;
             return true;
         }
         
-        cpu_count = quota / period;
+        cpu_count = (double) quota / period;
         if (cpu_count < UINT_MAX)
         {
             *val = cpu_count;
@@ -465,7 +465,7 @@ PAL_GetPhysicalMemoryUsed(size_t* val)
 
 BOOL
 PALAPI
-PAL_GetCpuLimit(UINT* val)
+PAL_GetCpuLimit(double* val)
 {
     if (val == nullptr)
         return FALSE;
