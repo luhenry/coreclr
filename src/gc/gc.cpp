@@ -34212,11 +34212,26 @@ HRESULT GCHeap::Initialize()
 
 #ifdef MULTIPLE_HEAPS
     nhp_from_config = static_cast<uint32_t>(GCConfig::GetHeapCount());
-    
+
     // GetCurrentProcessCpuCount only returns up to 64 procs.
-    uint32_t nhp_from_process = GCToOSInterface::CanEnableGCCPUGroups() ?
-                                GCToOSInterface::GetTotalProcessorCount():
-                                GCToOSInterface::GetCurrentProcessCpuCount();
+    uint32_t nhp_from_process;
+    if (GCToOSInterface::CanEnableGCCPUGroups())
+    {
+        nhp_from_process = GCToOSInterface::GetTotalProcessorCount();
+    }
+    else
+    {
+        uint32_t cpuCount = GCToOSInterface::GetCurrentProcessCpuCount();
+        double cpuBudget = GCToOSInterface::GetCurrentProcessCpuBudget();
+        assert (1.0 <= cpuBudget && cpuBudget < (double) UINT32_MAX);
+
+        if (cpuBudget < cpuCount)
+        {
+            cpuCount = (uint32_t) ::round(cpuBudget);
+        }
+
+        nhp_from_process = cpuCount;
+    }
 
     if (nhp_from_config)
     {

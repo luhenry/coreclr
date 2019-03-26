@@ -303,6 +303,9 @@ public:
     //  The number of processors
     static uint32_t GetCurrentProcessCpuCount();
 
+    // Get the budget for the current processor
+    static double GetCurrentProcessCpuBudget();
+
     // Sets the calling thread's affinity to only run on the processor specified
     // in the GCThreadAffinity structure.
     // Parameters:

@@ -58,7 +58,7 @@ static pthread_mutex_t g_flushProcessWriteBuffersMutex;
 
 size_t GetRestrictedPhysicalMemoryLimit();
 bool GetPhysicalMemoryUsed(size_t* val);
-bool GetCpuLimit(uint32_t* val);
+bool GetCpuLimit(double *val);
 
 static size_t g_RestrictedPhysicalMemoryLimit = 0;
 
@@ -529,7 +529,6 @@ bool GCToOSInterface::GetCurrentProcessAffinityMask(uintptr_t* processAffinityMa
 uint32_t GCToOSInterface::GetCurrentProcessCpuCount()
 {
     uintptr_t pmask, smask;
-    uint32_t cpuLimit;
 
     if (!GetCurrentProcessAffinityMask(&pmask, &smask))
         return 1;
@@ -553,10 +552,13 @@ uint32_t GCToOSInterface::GetCurrentProcessCpuCount()
     if (count == 0 || count > 64)
         count = 64;
 
-    if (GetCpuLimit(&cpuLimit) && cpuLimit < count)
-        count = cpuLimit;
-
     return count;
+}
+
+double GCToOSInterface::GetCurrentProcessCpuBudget()
+{
+    double cpuLimit;
+    return GetCpuLimit (&cpuLimit) ? cpuLimit : (double) GetCurrentProcessCpuCount();
 }
 
 // Return the size of the user-mode portion of the virtual address space of this process.
