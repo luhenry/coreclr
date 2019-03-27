@@ -23,7 +23,6 @@
 #include <stdarg.h>
 #include <memory.h>
 
-#include <cmath>
 #include <new>
 
 #ifdef PLATFORM_UNIX
